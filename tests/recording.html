@@ -1,0 +1,23 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>本地录像链路测试</title><style>body{font:15px/1.8 system-ui;max-width:700px;margin:30px auto;padding:20px;color:#25463b}canvas,video{width:100%;max-width:320px;display:block;margin:15px 0;background:#142a20}button,a{padding:10px;margin:5px}pre{white-space:pre-wrap}</style><h1>本地录像链路测试</h1><p>仅录制生成的动态图案，不访问摄像头、不运行活体检测、不上传数据。此页不会发布到 dist。</p><button id="test">录制并验证 2 秒视频</button><canvas id="canvas" width="320" height="240"></canvas><video id="playback" controls muted playsinline></video><a id="save" hidden>下载测试视频</a><pre id="result">待测试</pre><script type="module">
+import { LocalVideoRecorder } from '/src/video-recorder.js';
+const $ = (id) => document.getElementById(id);
+$('test').onclick = async () => {
+  $('test').disabled = true; const canvas = $('canvas'), ctx = canvas.getContext('2d'); let timer, stream;
+  try {
+    let tick = 0;
+    const draw = () => { ctx.fillStyle = '#183c2d'; ctx.fillRect(0, 0, 320, 240); ctx.fillStyle = '#a6ead8'; ctx.fillRect((tick++ * 7) % 280, 80, 40, 40); ctx.font = '18px system-ui'; ctx.fillText(`Frame ${tick}`, 15, 35); };
+    draw(); timer = setInterval(draw, 50); stream = canvas.captureStream(20);
+    const recorder = new LocalVideoRecorder();
+    if (!recorder.start(stream)) throw new Error(recorder.error);
+    $('result').textContent = '真实 MediaRecorder 编码中…';
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const saved = await recorder.stop(); clearInterval(timer); stream.getTracks().forEach((track) => track.stop());
+    if (!saved.blob) throw new Error(saved.error || '无视频');
+    const url = URL.createObjectURL(saved.blob); $('playback').src = url;
+    await new Promise((resolve, reject) => { $('playback').onloadeddata = resolve; $('playback').onerror = () => reject(new Error('视频解码失败')); setTimeout(() => reject(new Error('解码等待超时')), 8000); });
+    $('save').href = url; $('save').download = `recording-test.${saved.extension}`; $('save').hidden = false;
+    $('result').textContent = JSON.stringify({ status: saved.status, bytes: saved.bytes, mimeType: saved.mimeType, durationMs: saved.durationMs, decodedWidth: $('playback').videoWidth, decodedHeight: $('playback').videoHeight, hasAudio: saved.hasAudio, decoded: true }, null, 2);
+  } catch (error) { $('result').textContent = `失败：${error.message}`; }
+  finally { clearInterval(timer); stream?.getTracks().forEach((track) => track.stop()); $('test').disabled = false; }
+};
+</script></html>

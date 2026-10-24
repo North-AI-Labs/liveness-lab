@@ -1,0 +1,28 @@
+{
+  "name": "beizhi-liveness-lab",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "engines": { "node": "^20.19.0 || >=22.12.0" },
+  "type": "module",
+  "description": "浏览器本地动作活体、RGB 轻量防伪和优选人脸照片测试",
+  "scripts": {
+    "dev": "node scripts/prepare-runtime.mjs && node scripts/build-worker.mjs && vite --host 127.0.0.1 --port 5175 --strictPort",
+    "dev:lan": "node scripts/lan.mjs",
+    "build": "node scripts/prepare-runtime.mjs && node scripts/build-worker.mjs && vite build",
+    "build:source": "node scripts/prepare-runtime.mjs --allow-missing-models && node scripts/build-worker.mjs && vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 5175 --strictPort",
+    "assets": "node scripts/prepare-assets.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "check:models": "node scripts/check-models.mjs",
+    "check:publish": "node scripts/check-publish.mjs"
+  },
+  "dependencies": {
+    "@mediapipe/tasks-vision": "0.10.32",
+    "onnxruntime-web": "1.22.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.1",
+    "vite": "7.3.7"
+  }
+}

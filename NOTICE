@@ -1,0 +1,10 @@
+Beizhi H5 Liveness Lab
+Copyright 2026 北智技术实验室
+
+The original application source and documentation are licensed under the
+Apache License, Version 2.0. See LICENSE for the full license text.
+
+Third-party components retain their own copyright notices and licenses.
+See public/THIRD_PARTY_NOTICES.txt and public/ORT-ThirdPartyNotices.txt.
+Model weights are not included in the source repository and remain subject
+to their separate terms described in public/models/README.md.

@@ -1,0 +1,15 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>活体实验室 · 开发诊断</title><style>body{font-family:system-ui;padding:30px;max-width:800px;margin:auto}canvas{max-width:260px}pre{white-space:pre-wrap}</style><h1>真实模型开发诊断</h1><p>使用上游公开测试图，验证图像、关键点、姿态、质量与 RGB 推理。此页不产生活体通过结果。</p><canvas id="frame"></canvas><pre id="output">正在加载模型…</pre><script type="module">
+import { RuntimeClient } from '../src/runtime-client.js';
+const output = document.getElementById('output');
+try {
+  const runtime = new RuntimeClient();
+  await runtime.init((text) => output.textContent = text);
+  const image = new Image(); image.src = new URLSearchParams(location.search).has('portrait') ? './fixtures/portrait.jpg' : './fixtures/upstream-face.jpg'; await image.decode();
+  const canvas = document.getElementById('frame'); canvas.width = image.naturalWidth; canvas.height = image.naturalHeight;
+  canvas.getContext('2d').drawImage(image, 0, 0);
+  const face = await runtime.frame(canvas, performance.now());
+  const diagnostic = await runtime.diagnostic();
+  output.textContent = JSON.stringify({ runtime: runtime.mode, face, diagnostic }, null, 2);
+  document.title = face.count === 1 && face.landmarks?.length === 7 && Number.isFinite(face.yaw) ? 'PASS · 真实样图推理' : 'FAIL · 真实样图推理';
+} catch (error) { document.title = 'FAIL · 模型诊断'; output.textContent = error.stack; }
+</script></html>

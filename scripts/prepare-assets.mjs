@@ -1,0 +1,11 @@
+import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+const root = new URL('../', import.meta.url);
+const localPython = fileURLToPath(new URL(process.platform === 'win32' ? '.venv/Scripts/python.exe' : '.venv/bin/python', root));
+const python = process.env.LIVENESS_PYTHON || (existsSync(localPython) ? localPython : 'python');
+const result = spawnSync(python, [fileURLToPath(new URL('prepare-models.py', import.meta.url)), ...process.argv.slice(2)], { stdio: 'inherit' });
+if (result.error) throw new Error(`无法运行 Python：${python}。请安装 Python 3.11+ 或设置 LIVENESS_PYTHON。`, { cause: result.error });
+if (result.status !== 0) process.exit(result.status || 1);
+await import('./prepare-runtime.mjs');
+await import('./build-worker.mjs');

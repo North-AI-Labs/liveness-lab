@@ -1,0 +1,44 @@
+/* Put the camera and primary action in the first mobile viewport. */
+@media (max-width: 680px) {
+  .app-shell { padding-inline: 12px; }
+  .header { height: 64px; }
+  .intro { display: none; }
+  .workspace { padding-top: 10px; gap: 12px; }
+  .camera-card { border-radius: 13px; }
+  .card-top { height: 42px; padding-inline: 14px; font-size: 11px; }
+  .viewfinder {
+    margin-inline: 8px;
+    aspect-ratio: auto;
+    height: clamp(240px, calc(100vh - 280px), 420px);
+    height: clamp(240px, calc(100svh - 280px), 420px);
+    border-radius: 10px;
+  }
+  .viewfinder video { height: calc(100% - 80px); }
+  .instruction { height: 80px; padding: 10px 12px; gap: 4px; }
+  .instruction h2 { font-size: 18px; }
+  .instruction p { font-size: 10px; }
+  .instruction > span { top: 24px; }
+  .camera-placeholder { inset: 36px 0 80px; }
+  .camera-idle-icon { width: 42px; height: 42px; margin-bottom: 12px; }
+  .camera-idle-icon svg { width: 25px; height: 25px; }
+  .camera-placeholder > p { font-size: 13px; margin-bottom: 5px; }
+  .camera-placeholder > small { font-size: 10px; }
+  .face-guide { top: calc(50% - 22px); max-height: calc(100% - 132px); }
+  .view-badge { top: 10px; left: 10px; padding: 4px 7px; font-size: 9px; }
+  .stage-list { padding: 12px 14px 8px; }
+  .stage { font-size: 10px; }
+  .stage > span { width: 18px; height: 18px; }
+  .camera-bottom { padding: 0 14px 12px; }
+  .status-message { min-height: 28px; font-size: 11px; }
+  .buttons { gap: 8px; }
+  .buttons > button { min-height: 44px; padding-block: 9px; }
+  .fine-print { margin-top: 9px; font-size: 9px; line-height: 1.5; }
+  .identity-option { min-height: 24px; margin-bottom: 5px; font-size: 10px; }
+  .voice-hint { margin-bottom: 6px; font-size: 9px; }
+  .side-panel { gap: 10px; }
+  .panel { padding: 16px; }
+  .action-list { margin: 8px 0 14px; }
+  .action-row { padding-block: 8px; }
+  .quality-chips { margin-top: 13px; }
+  .usage-note { padding: 18px 2px; }
+}

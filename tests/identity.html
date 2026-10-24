@@ -1,0 +1,37 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>一致性真实模型验证</title><style>body{font:14px/1.8 system-ui;max-width:800px;margin:24px auto;padding:20px;color:#25463b}button{padding:12px}pre{white-space:pre-wrap}canvas{width:160px;margin:5px}</style><h1>一致性真实模型验证</h1><p>使用现有公开测试照片检查真实 Worker 与主线程特征、对齐和可选开关，不访问摄像头、不产生活体通过。</p><button id="test">运行一致性模型验证</button><div id="pictures"></div><pre id="output">待运行</pre><script type="module">
+import { RuntimeClient } from '../src/runtime-client.js';
+import { VisionRuntime } from '../src/vision-runtime.js';
+import { cosine } from '../src/identity-math.js';
+const $=id=>document.getElementById(id), checks=[];
+function check(name,condition,detail){checks.push({name,passed:Boolean(condition),detail});$('output').textContent=JSON.stringify(checks,null,2);if(!condition)throw new Error(name);}
+async function load(file){const image=new Image();image.src=`./fixtures/${file}`;await image.decode();const c=document.createElement('canvas');c.width=image.width;c.height=image.height;c.getContext('2d').drawImage(image,0,0);return c;}
+$('test').onclick=async()=>{
+  $('test').disabled=true;const client=new RuntimeClient(), direct=new VisionRuntime();
+  try{
+    await client.init(text=>$('output').textContent=text);
+    const a=await load('portrait.jpg'),b=await load('upstream-face.jpg');
+    // Crop each detected face with margin, then enlarge the whole test input.
+    async function prepare(source){const m=await client.frame(source,performance.now());if(m.count!==1)throw new Error('公开样本没有单人脸');const c=document.createElement('canvas');c.width=640;c.height=720;const w=Math.min(source.width,m.box.w*2.5),h=w*720/640,x=Math.max(0,Math.min(source.width-w,m.box.x+m.box.w/2-w/2)),y=Math.max(0,Math.min(source.height-h,m.box.y+m.box.h/2-h*.45));c.getContext('2d').drawImage(source,x,y,w,h,0,0,640,720);$('pictures').append(c);return c;}
+    const first=await prepare(a),other=await prepare(b);
+    const off=await client.frame(first,performance.now());check('未开启时不返回特征',!off.identity);
+    await client.configureIdentity(true);
+    const request={enabled:true,force:true,settings:{sharpness:10}};
+    const one=await client.frame(first,performance.now(),request),two=await client.frame(first,performance.now(),request);
+    await direct.init(new URL("../",location.href).href);await direct.configureIdentity(true);
+    const differentFace=await direct.analyze(other,performance.now());
+    if(differentFace.count!==1)throw new Error('独立测试图未获得单人脸');
+    const differentEmbedding=await direct.embedding(other,differentFace);
+    check('Worker 提取真实 512 维特征',one.identity?.embedding.length===512,{mode:client.mode,pose:[one.yaw,one.pitch,one.roll],quality:one.sharpness});
+
+    const same=cosine(one.identity.embedding,two.identity.embedding),diff=cosine(one.identity.embedding,differentEmbedding);
+    check('同图稳定且不同人未达到演示门槛',same>.98&&diff<.45,{same,different:diff});
+    const variation=document.createElement('canvas');variation.width=640;variation.height=720;const ctx=variation.getContext('2d');ctx.filter='brightness(1.12)';ctx.drawImage(first,0,0);
+    const variant=await client.frame(variation,performance.now(),request);const variantScore=cosine(one.identity.embedding,variant.identity.embedding);check('同人亮度变体匹配',variantScore>.45,{score:variantScore});
+    await client.configureIdentity(false);const disabled=await client.frame(first,performance.now(),request).then(()=>false,error=>/一致性模型未加载/.test(error.message));check('关闭后释放识别模型，不能假装继续推理',disabled);
+    let main;for(let i=0;i<3;i++)main=await direct.analyze(first,performance.now(),false,request);
+    const modeScore=cosine(one.identity.embedding,main.identity.embedding);check('主线程与 Worker 特征一致',modeScore>.999,{score:modeScore});
+    document.title='PASS · 一致性真实模型验证';
+  }catch(error){document.title='FAIL · 一致性真实模型验证';$('output').textContent=JSON.stringify({checks,error:error.stack},null,2);}
+  finally{client.close();direct.close();$('test').disabled=false;}
+};
+</script></html>

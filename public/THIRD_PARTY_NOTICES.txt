@@ -1,0 +1,48 @@
+THIRD-PARTY NOTICES
+
+The original application source is Apache-2.0; see PROJECT-LICENSE.txt and
+PROJECT-NOTICE.txt in the built site, or LICENSE and NOTICE in the repository.
+Third-party rights and model terms remain separate.
+
+MediaPipe Tasks Vision 0.10.32 / Face Landmarker float16 v1
+Copyright The MediaPipe Authors / Google LLC.
+Source: https://github.com/google-ai-edge/mediapipe
+Model: https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
+Guide: https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker
+Apache License 2.0: models/MediaPipe-LICENSE.txt.
+Model provenance and SHA-256: models/mediapipe-source.json.
+
+Silent-Face-Anti-Spoofing / MiniFASNetV2 / MiniFASNetV1SE
+Copyright minivision-ai / Beijing Mininglamp Vision Technology Co., Ltd.
+Source: https://github.com/minivision-ai/Silent-Face-Anti-Spoofing
+Pinned revision: b6d5f04ad78778917853b25c778acef6d5626d15
+Apache License 2.0: models/MiniFASNet-LICENSE.txt.
+The upstream PyTorch weights are converted to ONNX by the development export
+script. Original architecture, weight checksums, output checksums and conversion
+checks are documented in models/rgb-source.json and models/README.md.
+
+ONNX Runtime Web 1.22.0
+Copyright (c) Microsoft Corporation. All rights reserved.
+Source: https://github.com/microsoft/onnxruntime
+MIT License: ORT-LICENSE.txt.
+Included third-party notices: ORT-ThirdPartyNotices.txt.
+
+InsightFace / buffalo_s / MobileFaceNet w600k_mbf.onnx
+Source: https://github.com/deepinsight/insightface
+Model: https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_s.zip
+The InsightFace code is MIT licensed, but the supplied pretrained weights are
+for NON-COMMERCIAL RESEARCH ONLY. Commercial use requires separate authorization.
+Official terms: https://github.com/deepinsight/insightface/tree/master/python-package#license
+The source repository does not redistribute these weights. Runtime loading is
+optional. Provenance and SHA-256: models/identity-source.json.
+Using the source license or enabling a checkbox does not change model rights.
+
+Build-time tools: Vite 7.3.7 and esbuild 0.28.1 (MIT).
+Development-only conversion tools: PyTorch (BSD-style), ONNX (Apache-2.0),
+ONNX Runtime (MIT), NumPy (BSD-3-Clause); see their installed package notices.
+They are not included in the browser runtime.
+
+Chinese WAV prompts are pre-generated from the application's prompt text with
+the local Windows Speech Synthesis API. They contain no user recordings and
+require no online text-to-speech service. Regeneration uses an installed local
+zh-CN voice; any selected speech engine remains subject to its own terms.

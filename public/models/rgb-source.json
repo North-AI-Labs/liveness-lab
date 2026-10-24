@@ -1,0 +1,29 @@
+{
+  "repository": "https://github.com/minivision-ai/Silent-Face-Anti-Spoofing",
+  "revision": "b6d5f04ad78778917853b25c778acef6d5626d15",
+  "architectureSha256": "e498c4ec5e1ddfaba62b941a126c19d65aa564999f3309661fe43ee8bf38acd7",
+  "models": [
+    {
+      "file": "minifas-v2.onnx",
+      "upstreamFile": "2.7_80x80_MiniFASNetV2.pth",
+      "sourceSha256": "a5eb02e1843f19b5386b953cc4c9f011c3f985d0ee2bb9819eea9a142099bec0",
+      "sha256": "54ca9aab8e1402de8af805b48a1df266fc1a419cedffe679a3747d9d65d85541",
+      "scale": 2.7,
+      "input": "float32 BGR NCHW [0,255], 1x3x80x80",
+      "output": "raw logits, live class index = 1",
+      "maxExportError": 2.86102294921875e-06,
+      "bytes": 1743495
+    },
+    {
+      "file": "minifas-v1se.onnx",
+      "upstreamFile": "4_0_0_80x80_MiniFASNetV1SE.pth",
+      "sourceSha256": "84ee1d37d96894d5e82de5a57df044ef80a58be2b218b5ed7cdfd875ec2f5990",
+      "sha256": "0f01519910a4be13ba90d843cd3922444ed5b33fe70e8b3aac123ab4c8698bf2",
+      "scale": 4.0,
+      "input": "float32 BGR NCHW [0,255], 1x3x80x80",
+      "output": "raw logits, live class index = 1",
+      "maxExportError": 3.337860107421875e-06,
+      "bytes": 1742663
+    }
+  ]
+}

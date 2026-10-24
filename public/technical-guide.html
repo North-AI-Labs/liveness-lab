@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <meta name="theme-color" content="#087f65"/>
+  <meta name="description" content="面向初学者的 H5 活体检测技术说明：相机、随机动作、RGB 双模型防伪、质量筛选、正脸选帧、语音、隐私、运行步骤与故障排查。"/>
+  <title>技术说明文档 · 北智技术实验室·H5活体检测</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml"/>
+  <link rel="stylesheet" href="./technical-guide.css"/>
+</head>
+<body id="top">
+<header><a class="brand" href="./" aria-label="北智技术实验室·H5活体检测首页"><img class="brand-icon" src="./favicon.svg" alt="" width="40" height="40"/><strong class="brand-name">北智技术实验室</strong><span class="brand-divider" aria-hidden="true"></span><span class="brand-product">H5活体检测</span></a><a class="back-link" href="./">← 返回首页</a></header>
+<div class="doc-hero"><div class="eyebrow">A BEGINNER'S TECHNICAL GUIDE</div><h1>H5 活体检测<br/>技术说明文档</h1><p class="lead">从“打开相机”到“留下清晰正脸”，一步一步理解网页如何观察动作、检查防伪、挑选照片。先看懂流程，再认识算法，最后自己运行和调整。</p><div class="doc-meta"><span>适合初学者</span><span>对应当前 v0.1.0 实现</span><span>更新于 2026-10-24</span><span>浏览器本地推理</span></div></div>
+<div class="doc-layout">
+<details class="doc-toc" open><summary>阅读目录</summary><nav aria-label="技术说明章节">
+  <a href="#overview">01 · 这个项目做什么</a><a href="#terms">02 · 先认识几个词</a><a href="#journey">03 · 一次完整的检测</a><a href="#architecture">04 · 各部分怎么分工</a><a href="#camera">05 · 相机与画面方向</a><a href="#landmarks">06 · 怎样看懂人脸动作</a><a href="#actions">07 · 随机动作怎样通过</a><a href="#rgb">08 · RGB 防伪怎样工作</a><a href="#quality">09 · 画面质量与参数</a><a href="#capture">10 · 何时截照、选哪一帧</a><a href="#outputs">11 · 照片和记录怎么用</a><a href="#voice">12 · 语音与手机兼容</a><a href="#privacy">13 · 数据和网络请求</a><a href="#run">14 · 跟着步骤运行项目</a><a href="#code">15 · 从哪些代码开始看</a><a href="#troubleshooting">16 · 常见问题怎么处理</a><a href="#validation">17 · 怎样验收、能防到哪里</a><a href="#identity">18 · 可选人脸一致性校验</a><a href="#references">19 · 模型来源与继续学习</a>
+</nav></details>
+<main class="doc-content">
+<section id="overview"><h2><span class="number">01</span>这个项目做什么</h2>
+<p>这是一张在手机或电脑浏览器中运行的测试网页。用户开启前置摄像头，保持单人入镜，完成两个随机动作；程序结合可见光防伪模型检查画面，最后自动保留一张自然、清晰的正脸照片，供后续人脸比对使用。</p>
+<ol class="flow" aria-label="完整检测流程"><li>正脸准备<small>质量 + 前置 RGB</small></li><li>随机动作<small>完成两个并回正</small></li><li>优选照片<small>质量 + 后置 RGB</small></li><li>查看结果<small>下载照片与记录</small></li></ol>
+<div class="table-wrap" role="region" aria-label="能力区分，可横向滚动" tabindex="0"><table><thead><tr><th>能力</th><th>它回答什么</th><th>本项目情况</th></tr></thead><tbody><tr><td>人脸检测</td><td>画面里有没有脸、脸在哪里？</td><td>已实现，并检查多人入镜。</td></tr><tr><td>动作检测</td><td>是否按顺序完成指定动作？</td><td>已实现随机两个动作与回正检查。</td></tr><tr><td>RGB 轻量防伪</td><td>可见光图像是否呈现模型学习到的活体 / 攻击线索？</td><td>已接入两个实际模型，效果需真机评估。</td></tr><tr><td>照片采集</td><td>何时有适合后续比对的正脸？</td><td>已实现质量筛选、选帧与裁剪。</td></tr><tr><td>身份比对 / 实名核验</td><td>是否与证件是同一人，身份是否有效？</td><td>未实现，也没有查询身份数据库。</td></tr></tbody></table></div>
+<div class="boundary"><strong>“检测通过”在这里的含义</strong><p>表示当前浏览器观察到的动作、图像分数和照片质量满足本项目规则。它不能证明具体身份、不能证明全程为同一人，也不能作为实名开户等强认证的唯一依据。</p></div>
+<p>初学者可以按目录顺序阅读；只想先运行，可跳到第 14 节；遇到问题可先看第 16 节。本说明页本身不加载检测模型，也不申请相机权限。</p>
+</section>
+<section id="terms"><h2><span class="number">02</span>先认识几个词</h2>
+<p>不需要先学会机器学习。先记住每种技术负责什么，再结合流程理解即可。</p>
+<div class="table-wrap" role="region" aria-label="技术名词解释，可横向滚动" tabindex="0"><table><thead><tr><th>名词</th><th>用日常语言解释</th><th>在这里的用途</th></tr></thead><tbody>
+<tr><td>H5 / HTML / CSS / JS</td><td>H5 在这里泛指网页；HTML 放内容，CSS 管外观，JavaScript 管行为。</td><td>显示取景框、打开相机、推进检测和输出结果。</td></tr><tr><td>视频帧 / 像素</td><td>视频是连续图片；每张图片由很多小色块组成。</td><td>每次抽取一张画面，计算动作、防伪和清晰度。</td></tr><tr><td>Canvas</td><td>浏览器内存中的电子画布。</td><td>读取视频像素、缩放分析区域、裁剪和导出照片。</td></tr><tr><td>模型 / 推理</td><td>模型是预先训练好的参数；推理是使用参数分析新图片。</td><td>模型下载到浏览器后运行，不在网页内重新训练。</td></tr><tr><td>关键点 / 表情系数</td><td>前者是脸上眼角、鼻尖等位置；后者描述闭眼、张嘴等状态的强弱。</td><td>找到人脸区域、估计姿态、判断眨眼和张嘴。</td></tr><tr><td>MediaPipe Face Landmarker</td><td>Google 提供的人脸关键点工具。</td><td>输出关键点、表情系数和头部变换矩阵。</td></tr><tr><td>RGB / PAD</td><td>RGB 指普通彩色可见光画面；PAD 指呈现攻击检测，例如照片或屏幕展示的脸。</td><td>运行轻量模型辅助检查图像防伪线索。</td></tr><tr><td>ONNX / ONNX Runtime</td><td>前者是模型文件格式；后者是执行模型计算的运行库。</td><td>在浏览器执行两个 MiniFASNet 防伪模型。</td></tr><tr><td>WASM</td><td>让编译后的计算程序在浏览器里运行的技术。</td><td>本项目使用 CPU 的 WASM 路径，不要求 WebGPU。</td></tr><tr><td>Worker / 主线程</td><td>主线程管理页面；Worker 是同一浏览器里的工作线程。</td><td>尽量把重计算放进 Worker，让按钮和提示保持响应。</td></tr><tr><td>状态机</td><td>把流程分成明确步骤，只有条件满足才进入下一步。</td><td>防止跳过准备、动作回正或后置防伪就输出通过。</td></tr><tr><td>阈值 / 中位数</td><td>阈值是设定的门槛；中位数是排序后位于中间的值。</td><td>用多次分数共同判断，减少单次偶然波动的影响。</td></tr><tr><td>前端 / 静态服务器</td><td>前端在用户浏览器运行；静态服务器负责把文件送给浏览器。</td><td>服务器提供页面和模型，不负责识别人脸。</td></tr></tbody></table></div>
+<div class="note"><strong>“只使用 H5 + JS”在这个项目里的意思</strong><p>用户不需要安装 App，检测也不依赖云端核身接口。计算由 JavaScript 调度，并使用 WASM 和预训练模型；并非把神经网络的全部运算逐行手写成 JavaScript。Node.js 用于电脑开发和托管静态文件，Python 只在需要重新导出模型时使用。</p></div>
+</section>
+<section id="journey"><h2><span class="number">03</span>一次完整的检测会发生什么</h2>
+<ol><li><strong>准备模型。</strong>打开首页后加载人脸模型、两个防伪模型及运行库。全部就绪后，开始按钮才可用。</li><li><strong>点击开始并授权。</strong>清除上一轮结果，重新抽取两个不重复动作，申请前置摄像头，不申请麦克风。</li><li><strong>保持自然正脸。</strong>确保只有一张脸、尺寸合适、光线均匀、画面清晰。程序记录自然姿态，并收集前置 RGB 样本。</li><li><strong>跟随第一个动作。</strong>先保持正面，再做动作并稍作停留，然后回到自然表情。转头左右以你自己为准。</li><li><strong>完成第二个动作。</strong>同样需要“自然 → 动作 → 恢复”的过程，不能用一张闭眼或侧脸画面直接通过。</li><li><strong>保持正面等待截照。</strong>睁眼、闭嘴，重新收集 RGB 样本；从合格画面里选出较好的正脸。</li><li><strong>查看和保存。</strong>通过后关闭摄像头，显示照片，提供人脸照片、原始帧和 JSON 检测记录下载。</li></ol>
+<div class="example"><span class="label">用“眨眼 → 向左转头”举例</span><p>正脸准备通过 → 保持睁眼 → 缓慢闭上双眼并稍停 → 睁眼 → 保持正面 → 向你自己的左侧转头并稍停 → 回正 → 睁眼闭嘴保持稳定 → 后置 RGB 与选帧通过 → 显示照片。发生多人入镜或超出连续性限制的画面中断后，不能靠后续一个动作补成通过。未勾选“会话内人脸一致性校验”时不检查人脸身份；勾选后按第 18 节增加固定参考与过程抽检，仍不能保证排除所有换人或注入。</p></div>
+<p>任一必需环节失败、超时或主动停止，本轮不会输出通过结果。重新开始会重新随机动作，不会沿用已经完成的动作。支持录像的浏览器会从相机画面开始播放时同步录制，到本轮结束时停止；失败和主动停止的片段也可保存，但会标注相应检测结果。</p>
+</section>
+<section id="architecture"><h2><span class="number">04</span>各部分怎么分工</h2>
+<pre><code>静态服务器：提供 HTML、CSS、JS、模型、WASM、语音文件
+    ↓ 下载资源
+浏览器主页面：打开相机、显示提示、播放语音、管理流程
+    ↓ 当前帧像素                 ↑ 指标和分数
+视觉 Worker（仍在用户的浏览器中）
+    ├─ Face Landmarker → 人脸位置、表情、头部姿态
+    ├─ 像素质量计算 → 亮度、过暗 / 过亮比例、清晰度
+    └─ MiniFASNet × 2 → 两个防伪分数及均值
+    ↓
+主页面状态机：正脸准备 → 动作 1 → 动作 2 → 选帧 → 通过 / 失败
+    ↓
+浏览器内存中的照片与检测记录 → 用户点击下载</code></pre>
+<p>主页面按次序提交画面，等待分析结果后再安排后续任务，避免无节制堆积旧帧。Worker 路径通过可转移的图像对象传递画面；完成后释放相应图像资源。</p>
+<p>关键点分析按约 65 毫秒的循环预算调度；RGB 计算仅在合适正脸时约每 300 毫秒进行一次。<strong>这不是固定帧率承诺。</strong>一次计算若耗时较长，实际分析频率会下降，也不会补算已经错过的画面。</p>
+<div class="note"><strong>Worker 不等于远程后台</strong><p>它在同一设备中计算，不会因为使用线程就上传照片，也不保证算法本身变快。缺少 Worker、OffscreenCanvas 等能力，或 Worker 初始化失败时，会尝试主线程兼容模式；三个模型仍需成功加载，不会悄悄跳过 RGB。</p></div>
+</section>
+<section id="camera"><h2><span class="number">05</span>网页怎样打开相机、处理方向</h2>
+<p>相机调用发生在点击开始后。下面是当前请求的简化写法：</p>
+<pre><code>const stream = await navigator.mediaDevices.getUserMedia({
+  audio: false, // 不申请麦克风
+  video: {
+    facingMode: { ideal: 'user' }, // 优先前置摄像头
+    width: { ideal: 1280 },
+    height: { ideal: 720 },
+    frameRate: { ideal: 24, max: 30 }
+  }
+});</code></pre>
+<p><code>ideal</code> 表示偏好，最终镜头、分辨率和帧率由设备与浏览器决定。请求 1280 × 720，并不代表最终一定是这个尺寸；导出记录会保存实际原始帧尺寸。</p>
+<h3>为什么手机要 HTTPS？</h3><p>摄像头接口需要受支持的安全上下文。本机电脑可访问 <code>http://127.0.0.1:5175/</code>；手机里的 127.0.0.1 指手机自己。手机应使用电脑的局域网 HTTPS 地址，或可信 HTTPS 域名，并完成摄像头授权。普通局域网 HTTP 页面不能作为相机测试入口。</p>
+<h3>为什么预览和下载照片左右不同？</h3><p>预览采用镜像，像照镜子，方便调整位置；分析和导出使用原始相机画面，不做镜像。动作中的“向左 / 向右”按被摄者自己的左右定义，不按屏幕箭头所在的一侧定义。</p>
+<h3>什么时候相机会停止？</h3><p>完成、失败、主动停止、切到后台或离开页面时会停止相机轨道。切回页面后要重新开始，以重新建立连续检测。本说明在新标签页打开；检测中切到说明页也会触发这条后台停止规则，建议先读文档或检测结束后再打开。</p>
+</section>
+<section id="landmarks"><h2><span class="number">06</span>程序怎样看懂人脸动作</h2>
+<p>Face Landmarker 分析每张视频帧，提供脸上许多位置点、表情系数和 4 × 4 的变换矩阵。项目配置最多返回两张脸：观察到多人就停止本轮，而不是只挑一张继续。</p>
+<ul><li><strong>人脸框：</strong>取关键点横纵坐标的范围，得到面部区域。它不是整个头发、肩膀或证件照的外框。</li><li><strong>偏航 yaw：</strong>左右转头；<strong>俯仰 pitch：</strong>低头抬头；<strong>倾斜 roll：</strong>头部向肩膀一侧歪斜。项目按矩阵的列优先布局换算角度。</li><li><strong>眼睛：</strong>分别观察左眼和右眼的闭合系数，眨眼需要双眼都达到门槛。</li><li><strong>嘴巴：</strong>观察 <code>jawOpen</code> 系数判断张嘴与恢复闭嘴。</li></ul>
+<p>表情系数大致在 0～1 之间，表示该表情特征的强弱，<strong>不是动作识别准确率，也不是眼皮闭合的物理百分比</strong>。它受光照、遮挡、眼镜、姿态和模型误差影响。</p>
+<h3>为什么要先校准自然姿态？</h3><p>手机位置和每个人的坐姿不同。准备阶段收集自然正脸，取 yaw、pitch 的中位数作为本轮基准，后续转头和点头主要看相对这个基准的角度变化。例如自然 yaw 为 3°，左转后为 25°，相对变化为 22°。这仍是模型估计，不是精密测角仪。</p>
+<p>初始自然正脸要求：|yaw| &lt; 12°、|pitch| &lt; 14°、|roll| &lt; 10°，闭眼系数 &lt; 0.30、张嘴系数 &lt; 0.22。动作回正用相对角度检查，具体见下一节。</p>
+</section>
+<section id="actions"><h2><span class="number">07</span>随机动作怎样判定通过</h2>
+<p>每轮用浏览器 <code>crypto.getRandomValues()</code> 从五种动作中不重复抽两个。先选一个再从剩下四个中选一个，因此共有 5 × 4 = <strong>20 种有序组合</strong>。随机动作增加固定回放的准备难度，但不能单独证明画面来自真实现场。</p>
+<p>每个动作都有三个小阶段：<strong>自然状态 → 做出动作 → 恢复自然</strong>。进入动作时预留约 700 毫秒提示时间，然后需要自然状态持续至少 220 毫秒。动作与恢复均要求连续多帧，单帧命中不算完成。</p>
+<div class="table-wrap" role="region" aria-label="五种动作判定规则，可横向滚动" tabindex="0"><table><thead><tr><th>动作</th><th>动作阶段的主要条件</th><th>最低持续时间</th></tr></thead><tbody>
+<tr><td>请点头</td><td>相对 pitch 在 15°～45°之间，|相对 yaw| &lt; 14°；实际为低头后回正。</td><td>220 毫秒</td></tr><tr><td>向左转头</td><td>相对 yaw 在 19°～48°之间，|相对 pitch| &lt; 18°。</td><td>220 毫秒</td></tr><tr><td>向右转头</td><td>相对 yaw 在 −48°～−19°之间，|相对 pitch| &lt; 18°。</td><td>220 毫秒</td></tr><tr><td>请眨眼</td><td>保持正面，双眼闭合系数都 &gt; 0.55。</td><td>55 毫秒，且至少两个分析帧</td></tr><tr><td>请张嘴</td><td>保持正面，张嘴系数 &gt; 0.48。</td><td>180 毫秒</td></tr></tbody></table></div>
+<p>区间边界按代码严格大于 / 小于判断。动作完成后，都要恢复 |相对 yaw| &lt; 10°、|相对 pitch| &lt; 12°、|roll| &lt; 12°、闭眼系数 &lt; 0.30、张嘴系数 &lt; 0.22，并连续保持至少 260 毫秒。眨眼会提示睁眼，张嘴会提示闭嘴。</p>
+<div class="example"><span class="label">为什么快眨一下可能没通过？</span><p>程序只检查实际分析到的帧。快速眨眼可能发生在两次分析之间，尤其手机计算较慢时。按提示缓慢闭眼、稍停再睁开，比连续快速眨眼更容易形成完整证据。</p></div>
+<h3>连续性与超时</h3><ul><li>每个动作阶段包含等待、动作和恢复，默认最多 14 秒；整轮检测默认最多 65 秒。</li><li>准备阶段需要至少 8 个自然正脸分析帧，时间跨度至少 700 毫秒，并满足前置 RGB 条件。</li><li>动作开始后，丢脸超过约 900 毫秒会失败；相邻分析结果间隔超过 1400 毫秒也会失败。另有页面级视频 / 推理中断监测。</li><li>多人入镜立即失败；准备阶段暂时没有脸时重建准备证据，不会算作完成动作。</li></ul>
+</section>
+<section id="rgb"><h2><span class="number">08</span>RGB 轻量防伪怎样工作</h2>
+<p>RGB 在这里指普通彩色相机的可见光图像。本项目没有深度摄像头或红外输入，也没有红绿蓝闪屏挑战。它使用 MiniFASNet 模型，从人脸及周围图像中学习到的纹理等线索给出分类分数，辅助识别照片、屏幕展示等攻击。</p>
+<h3>两个模型怎样得到一个分数？</h3>
+<ol><li>取得当前帧的人脸框，按 2.7 倍和 4.0 倍分别扩边，保留不同范围的周围信息；接近边缘时调整裁剪范围。</li><li>把两张裁剪图各缩为 80 × 80，整理成模型要求的数据格式。</li><li>MiniFASNetV2 处理 2.7 倍图，MiniFASNetV1SE 处理 4.0 倍图，各输出三类原始数值。</li><li>对每个模型输出执行 softmax，取 live 类别（索引 1）的分数；将两个分数求平均，作为页面 RGB 融合分数。</li></ol>
+<pre><code>模型 A live 分数 = 0.90
+模型 B live 分数 = 0.82
+本帧融合分数 = (0.90 + 0.82) ÷ 2 = 0.86
+默认门槛 = 0.80 → 本帧分数达标
+但整轮仍需满足多帧、动作和照片质量条件。</code></pre>
+<div class="boundary"><strong>0.86 不表示“86% 确定是真人”</strong><p>这是当前模型在当前输入上的分类分数，没有经过本项目目标设备与攻击样本的概率校准。分数高不代表已排除全部攻击，分数低也不代表用户一定造假。光照、设备、裁剪方式都可能改变分数。</p></div>
+<h3>为什么动作前后都检查，而且要多次采样？</h3><p>准备阶段和动作后的选帧阶段分别需要至少 6 个有效融合分数；每组的中位数要达到阈值，并且至少 75% 的样本达标。例如 6 个样本至少 5 个达标，8 个样本至少 6 个达标，且仍须满足中位数条件。收集到 8 个仍不满足时会失败。</p>
+<p>RGB 只在正面、睁眼、闭嘴时计算，通常相隔至少 300 毫秒。大角度转头或闭眼时不使用上一帧分数冒充新分数；最终照片必须来自同一原始帧的合格质量与新鲜 RGB 结果。准备阶段的 RGB 样本保留约 6 秒的窗口。</p>
+<h3>开发者最容易接错的输入格式</h3><p>当前两个模型输入都是 <code>float32 BGR NCHW [1, 3, 80, 80]</code>，数值保留在 <strong>0～255，不除以 255</strong>。BGR 指蓝、绿、红通道顺序；NCHW 指批次、通道、高度、宽度。不要把其他模型的 0～1 归一化、RGB 通道顺序或 live 索引 0 直接套进来。</p>
+<p>例如一个红色像素的 RGB 为 (255, 0, 0)，本模型要放到 BGR 三个通道里的值是 (0, 0, 255)。格式不正确时模型仍可能输出数字，但数字的含义已经不可靠。</p>
+<p>当前人脸框来自 MediaPipe 关键点，与上游示例的检测框定义不同；Canvas 插值与上游 OpenCV 也可能有差异。模型导出数值接近，只证明模型转换部分，不证明完整浏览器流程与上游完全一致。</p>
+</section>
+<section id="quality"><h2><span class="number">09</span>画面质量与参数怎样理解</h2>
+<p>质量检查是为了让动作分析和照片更可靠。它不能替代防伪，也不判断身份。以下是当前 <code>src/core.js</code> 和 <code>src/vision-runtime.js</code> 的初始规则，需结合真实设备校准。</p>
+<div class="table-wrap" role="region" aria-label="画面质量参数，可横向滚动" tabindex="0"><table><thead><tr><th>检查项目</th><th>当前条件</th><th>你可以怎么调整</th></tr></thead><tbody>
+<tr><td>单人</td><td>模型必须检测到恰好 1 张脸。</td><td>让其他人离开镜头范围。</td></tr><tr><td>面部尺寸</td><td>人脸框宽、高各至少 180 原始像素；宽度占画面宽的 22%～68%。</td><td>太远就靠近，太近则稍微远离。</td></tr><tr><td>完整入镜</td><td>关键点范围不能进入画面边缘约 4% 的区域。</td><td>脸移到中央，转头幅度不要过大。</td></tr><tr><td>平均亮度</td><td>人脸区域灰度均值在 55～215。</td><td>面向均匀光源，避免背光和直射强光。</td></tr><tr><td>过暗 / 过亮比例</td><td>灰度 &lt; 25 的像素不超过 40%；&gt; 238 的像素不超过 30%。</td><td>减少大片阴影、过曝和强反光。</td></tr><tr><td>清晰度</td><td>人脸缩到 128 × 128 后计算灰度拉普拉斯方差，默认至少 35。</td><td>擦净镜头，稳定手机，等待对焦。</td></tr><tr><td>RGB 融合阈值</td><td>默认 0.80；前置、后置及截照帧都有相应门槛。</td><td>先检查姿态、光线和输入，不要一失败就降低门槛。</td></tr></tbody></table></div>
+<p>灰度可粗略理解为 0 是黑、255 是白。清晰度是在看亮暗边缘变化：边缘越明显通常越清楚，但噪声也会抬高数值，所以“清晰度高”并不保证照片一定好。</p>
+<h3>在哪里看数字、怎样调参？</h3><p>首页展开“测试参数与运行信息”，可看姿态、曝光、清晰度、两个模型分数、前后样本数量和单帧耗时。当前界面允许调整 RGB 阈值与清晰度下限；检测中参数会锁定。</p>
+<ol><li>先记录设备、浏览器、实际图像尺寸、光线、失败提示和数值。</li><li>先排除暗光、失焦、面部太小等采集问题，再判断是否是规则不适合设备。</li><li>每次只调一项，使用同一批正常人和攻击样本比较调整前后的结果。</li><li>同时观察正常用户误拒和攻击被接受的变化；更容易通过，并不代表更准确。</li></ol>
+</section>
+<section id="capture"><h2><span class="number">10</span>何时截照、选哪一帧</h2>
+<p>两个动作完成后，程序才进入优选照片阶段，不会使用动作中闭眼、张嘴或大角度侧脸的画面。需要自然正脸连续至少 500 毫秒、至少 4 个分析帧，然后开始收集符合条件的后置 RGB 样本。</p>
+<pre><code>候选帧必须同时满足：
+  单人、尺寸 / 位置 / 曝光 / 清晰度合格
+  正脸、睁眼、自然闭嘴，且已稳定达到要求
+  RGB 是这一帧新计算的结果，并达到门槛
+
+满足 → 比较候选评分，较高者替换已有候选
+后置 RGB 多帧统计达标，并已有照片 → 输出结果
+14 秒内未获得足够证据 → 本轮失败</code></pre>
+<h3>评分为什么综合多个指标？</h3><p>当前候选评分由清晰度约 45%、正面程度 30%、曝光接近目标亮度 135 的程度 15%、本帧 RGB 分数 10% 组成。各项先按代码归一化、限制范围再相加；它用于本轮相对选帧，不是人像质量行业标准，也不是活体概率。</p>
+<p>程序在采集条件满足时结束，保留截至结束前的较好候选；不会无限等待全程的“最佳照片”。分析数据、RGB 与原始照片来自同一帧，避免把一个时刻的分数套到另一个时刻的照片上。</p>
+<h3>怎样裁剪？会美颜或镜像吗？</h3><p>先保留原始相机帧，再围绕人脸裁成约 3:4 的竖向照片。裁剪宽度参考人脸框宽的 1.8 倍，并受原始画面宽高限制；上方预留一定余量，范围不得超出原图。像素取整和靠近画面边缘时，构图会相应受限。</p>
+<p>当前不做镜像、美颜、主动放大、背景替换或五点对齐；参考框、提示文字和界面也不会画入照片。输出是用于后续比对的正脸候选，<strong>不是按证件照规范生成的标准证件照</strong>，也没有通过身份比对。</p>
+</section>
+<section id="outputs"><h2><span class="number">11</span>照片和检测记录怎么用</h2>
+<div class="table-wrap" role="region" aria-label="输出文件说明，可横向滚动" tabindex="0"><table><thead><tr><th>下载内容</th><th>文件名结尾</th><th>用途</th></tr></thead><tbody><tr><td>人脸照片</td><td><code>portrait.jpg</code></td><td>约 3:4、原始方向的正脸裁剪。</td></tr><tr><td>原始帧</td><td><code>original.jpg</code></td><td>同一时刻完整画面，方便后续重新裁剪、对齐或检查构图。</td></tr><tr><td>检测记录</td><td><code>report.json</code></td><td>结构化保存动作、阈值、分数、质量、裁剪和关键点。</td></tr></tbody></table></div>
+<p>实际文件名前还有 <code>liveness-时间戳-</code> 前缀，便于区分多次测试。JPEG 通过 Canvas 编码，质量参数为 0.95；它仍是视频选帧，不是额外调用相机高清静态拍照接口。</p>
+<h3>检测过程录像怎样保存？</h3>
+<p>相机开始输出画面后，使用浏览器 <code>MediaRecorder</code> 同步录制原始视频轨道。界面出现 REC 与计时；通过、失败、手动停止或切到后台时结束录制，待编码器交回末尾数据后，才能预览和下载。录像没有镜像、界面叠字或美颜，也不包含麦克风声音和语音提示。</p>
+<p>页面“检测录像”区域提供回放与“下载本次录像”，文件名以 <code>video.mp4</code> 或 <code>video.webm</code> 结尾。程序优先尝试 MP4，再尝试 WebM 与浏览器默认格式，以实际可启动的编码为准，不会只修改后缀冒充其他格式。</p>
+<p>录像目标码率约 1.5 Mbps，实际码率、大小和帧率由浏览器决定。它不影响动作状态的判定，但编码会增加设备负载，手机性能仍需实测。为限制内存，累计片段上限为 64 MB；超限、编码异常或结束超时会标明部分 / 无有效录像，不会宣称录制完整。</p>
+<p>录像保存和活体通过是两种状态：检测未通过或主动停止也可能留下可回放的视频；有录像不能证明检测通过。浏览器不支持录像时会明确提示，仍可继续检测和截照。关闭或刷新页面无法保证末尾编码完成，应先停止并下载需要的录像。</p>
+<p>通过后的 <code>report.json</code> 会补充 <code>recording</code>：格式、字节数、录制时长、起止时间、尺寸、检测结果及完整性状态。报告不内嵌视频内容；照片与录像分别下载。重新开始或离开页面会清除本页录像，已下载的副本需自行管理。</p>
+<h3>JSON 是什么？</h3><p>JSON 是用键和值记录数据的文本格式，可以用文本编辑器打开，也方便其他程序读取。以下只展示字段结构，占位文字不是实际检测结果：</p>
+<pre><code>{
+  "schema": "liveness-lab/v1",
+  "actions": ["&lt;第一个动作提示&gt;", "&lt;第二个动作提示&gt;"],
+  "completedActions": ["&lt;动作 ID&gt;", "&lt;动作 ID&gt;"],
+  "settings": { "rgbThreshold": 0.8, "sharpness": 35 },
+  "rgb": {
+    "beforeMedian": "&lt;前置样本中位数&gt;",
+    "afterMedian": "&lt;后置样本中位数&gt;",
+    "photoFrame": "&lt;截照帧融合分数、两个模型分数与时间&gt;"
+  },
+  "quality": "&lt;亮度、清晰度、yaw、pitch、roll&gt;",
+  "photo": {
+    "mirrored": false, "beautified": false, "aligned": false,
+    "portraitCrop": "&lt;原图中的 x、y、w、h&gt;",
+    "originalLandmarks": "&lt;原图中的五点像素坐标&gt;",
+    "portraitLandmarks": "&lt;裁剪图中的五点像素坐标&gt;"
+  },
+  "events": "&lt;准备、动作、通过等事件时间线&gt;"
+}</code></pre>
+<p>完整记录还包含时间、运行模式、原始图像尺寸、样本数量、关键点顺序和能力限制。五点按<strong>图像左眼、图像右眼、鼻尖、图像左嘴角、图像右嘴角</strong>排列；眼睛位置由相应两个眼角取平均。像素坐标以图片左上角为原点，x 向右、y 向下，单位为像素。</p>
+<h3>后续接人脸比对时还缺什么？</h3><p>应按选定识别模型的要求，用五点做对齐，再处理输入尺寸、颜色顺序和归一化，最后计算特征和比对分数。勾选一致性选项时，会生成仅用于本轮比较的人脸特征；未勾选则不执行。当前没有比较证件照片，也没有对外提供可信认证凭据或跨页面完成协议。检测记录方便调试，不能当作不可篡改的证明。</p>
+</section>
+<section id="voice"><h2><span class="number">12</span>语音提示与手机兼容</h2>
+<p>语音来自项目预置的中文 WAV 文件，不调用在线文字转语音服务，不录音。开始、准备、五种动作、回正 / 睁眼 / 闭嘴、选帧和结束均有相应提示。</p>
+<ul><li>默认开启；取景框上方可以关闭或重播当前提示。</li><li>使用同一个播放器，阶段切换时替换旧提示，同一状态不会随每帧反复播报。</li><li>第一次播放借助“开始”点击触发；若浏览器阻止播放，会显示点按启用提示，可点击语音或重播按钮重试。</li><li>听不到时先检查媒体音量、静音和浏览器权限；文字引导仍可使用。</li><li>切到后台会停止播报。修改语音文案后，开发者需在具备本地中文语音的 Windows 上重新生成音频；仅改界面文字不会自动改变 WAV 内容。</li></ul>
+<h3>微信里能运行，是否所有手机都一样？</h3><p>不能只根据“支持 JavaScript”判断。还涉及相机权限、安全证书、WASM、图像处理能力、内存和音频播放策略。当前优先 Worker + OffscreenCanvas，必要时尝试主线程兼容模式；兼容模式可能更卡、更热，仍需真机测试。</p>
+<p>建议分别验收 iOS 微信、Android 微信、iOS Safari 和 Android Chrome，以及业务实际使用的其他浏览器。电脑缩小窗口只能验证排版，不能代替真机相机、音频、性能和防伪验收。微信可能限制文件下载，必要时用手机浏览器打开保存。</p>
+</section>
+<section id="privacy"><h2><span class="number">13</span>数据和网络请求去了哪里</h2>
+<p>当前路线为：相机 → 浏览器内存 → 本机模型分析与同步录像 → 页面照片、录像与记录 → 用户自行下载。项目未接入照片 / 视频上传、人脸识别云服务或统计分析 SDK，也不申请麦克风。录像使用与检测相同的相机来源，不申请第二个摄像头。</p>
+<ul><li>照片以 Canvas、Blob 和临时对象地址等形式存在当前页面内存中；结果不写入 localStorage、IndexedDB 或项目数据库。</li><li>重新开始、刷新或离开页面会清理当前结果；已经下载、截图或由其他软件保存的副本不受页面清理控制。</li><li>模型、运行库、脚本、样式和音频会产生同站点静态资源请求，也可能被浏览器缓存。这与上传相机画面不同。</li><li>加载完所需资源后，推理不需要云端接口；当前没有 Service Worker 离线启动机制，不能保证断网后刷新或重新打开仍可用。</li><li>开发环境还会有 Vite 的热更新连接；发布构建不包含开发热更新客户端。</li></ul>
+<h3>看到陌生域名请求，怎样判断来源？</h3><p>在浏览器网络面板查看具体请求的 <code>Initiator</code>（发起来源）、调用栈和请求内容，并与无扩展的其他浏览器对照。浏览器组件、扩展或注入脚本也可能产生请求；仅凭域名，不能确定是本项目发出或断言发送了什么。当前项目的模型与音频使用本地静态路径，不要求第三方统计域名。</p>
+<div class="boundary"><strong>本地计算与可信认证是两件事</strong><p>用户设备上的脚本、输入、阈值和结果可能被修改；相机画面也可能被注入。单纯在前端多加几项检查，不能把前端“通过”变成可信身份凭据。正式强认证需要另行设计可信验证链路。</p></div>
+</section>
+<section id="run"><h2><span class="number">14</span>跟着步骤运行项目</h2>
+<p>手机体验只需要浏览器。下面的终端命令在<strong>开发电脑</strong>的 PowerShell 中运行，不是在网页或手机地址栏输入。</p>
+<h3>第 1 步：找到目录，准备依赖</h3><p>本项目是独立源码仓库，可克隆到任意目录。电脑需要满足当前 Vite 依赖要求的 Node.js（20.19+ 或 22.12+）。<code>npm ci</code> 按锁定文件安装依赖，Git 仓库不含模型权重。先阅读 <code>public/models/README.md</code>，创建 Python 3.11 虚拟环境并安装锁定导出工具，再显式接受模型条款恢复资源。</p>
+<pre><code>cd D:\H5\liveness-lab
+npm ci
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r scripts/requirements-export.txt
+npm run assets -- --accept-model-terms</code></pre>
+<p>当前工作目录已有运行依赖和模型时可以直接启动。新克隆不包含权重；<code>assets</code> 会从固定来源下载关键点模型、恢复研究用途的一致性模型，并在缺少 RGB 模型时按锁定环境导出。每个模型均核验 SHA-256；哈希不符不会被覆盖。恢复后 <code>npm run build</code> 才能生成可用检测页面。</p>
+<h3>第 2 步：电脑本机预览</h3><pre><code>npm run dev</code></pre><p>保持终端运行，在同一电脑打开 <code>http://127.0.0.1:5175/</code>。等待模型就绪，点击开始、允许相机。按 <code>Ctrl+C</code> 停止服务；端口被占用时先检查原有服务，不要同时重复启动多个。</p>
+<h3>第 3 步：打包给手机测试</h3><pre><code>npm run build
+npm run dev:lan -- 192.168.1.100</code></pre><p>把示例 IP 换成开发电脑当前的局域网 IPv4，手机与电脑连接同一 Wi-Fi。页面入口为 <code>https://你的电脑IP:8445/</code>，证书引导为 <code>http://你的电脑IP:8085/</code>。示例 IP 仅为占位，必须替换。</p>
+<h3>第 4 步：处理测试 HTTPS 证书</h3><p>局域网脚本默认读取本项目 <code>.certs/</code>，目录包含 <code>server.pem</code>、<code>server-key.pem</code> 和 <code>ca.cer</code>。先用虚拟环境安装 <code>scripts/requirements-cert.txt</code>，再运行 <code>scripts/create-lan-cert.py 你的电脑IP</code> 生成独立测试证书。也可用 <code>LIVENESS_TLS_DIR</code> 指定已有目录，<code>LIVENESS_TLS_CA</code> 指定 CA 文件名；证书必须包含当前 IP 且未过期。</p>
+<p>手机需要手动安装并信任测试 CA；iPhone 安装后还需在“设置 → 通用 → 关于本机 → 证书信任设置”开启完全信任。脚本不自动修改系统信任或防火墙；缺少证书时也不会自动生成。只在受控测试设备上操作，测试结束可移除 CA；跨设备正式测试更适合可信 HTTPS 域名。</p>
+<h3>第 5 步：分清源码与发布文件</h3><p>本机开发服务读取源码；手机 HTTPS 服务读取 <code>dist/</code>。修改源代码或文档后，要重新 <code>npm run build</code> 再刷新手机。当前局域网脚本只提供同子网访问，不是公网托管服务。</p>
+<h3>部署到已有网站</h3><p>把整个 <code>dist/</code> 部署到可信 HTTPS 静态站点，保留模型、WASM、音频等目录。无需在运行时安装 Python 或接入识别后端。若部署在子目录，先设置对应 base 再构建，例如：</p>
+<pre><code>$env:LIVENESS_LAB_BASE = '/liveness/'
+npm run build
+Remove-Item Env:LIVENESS_LAB_BASE</code></pre>
+<p>将构建内容放到网站的 <code>/liveness/</code> 下，确保 Worker、模型与 WASM 返回真实文件和正确资源类型，不能把缺失文件一律改写成首页 HTML。页脚说明入口和本文资源使用对应的部署路径。</p>
+</section>
+<section id="code"><h2><span class="number">15</span>从哪些代码开始看</h2>
+<p>推荐先追踪一次“点击开始 → 完成动作 → 输出照片”，再研究模型细节。不必第一次就看懂矩阵和神经网络。</p>
+<div class="table-wrap" role="region" aria-label="源码阅读地图，可横向滚动" tabindex="0"><table><thead><tr><th>文件</th><th>负责什么</th><th>阅读重点</th></tr></thead><tbody>
+<tr><td><code>index.html</code></td><td>首页结构、按钮、参数和页脚。</td><td>用元素 ID 对照主程序的界面更新。</td></tr><tr><td><code>src/main.js</code></td><td>相机、主循环、页面渲染、选帧和下载。</td><td>开始事件 → loop → considerPhoto → finish。</td></tr><tr><td><code>src/core.js</code></td><td>动作抽样、状态机、质量和 RGB 基础规则。</td><td>randomActions、qualityIssue、LivenessSession.update、padAccepts。</td></tr><tr><td><code>src/vision-runtime.js</code></td><td>加载模型，计算关键点、质量和 RGB。</td><td>init → analyze；rgb 中的裁剪、输入与分数融合。</td></tr><tr><td><code>src/runtime-client.js</code></td><td>Worker 通信和兼容模式。</td><td>任务编号、结果匹配、超时与初始化回退。</td></tr><tr><td><code>src/vision-worker.js</code></td><td>后台线程任务入口。</td><td>初始化、逐帧分析、链路检查及资源释放。</td></tr><tr><td><code>src/audio-prompts.js</code></td><td>语音启用、切换、重播与播放受阻提示。</td><td>如何避免每帧重复播放同一句话。</td></tr><tr><td><code>src/style.css / mobile.css</code></td><td>首页布局和紧凑手机样式。</td><td>手机隐藏大标题、取景框高度和按钮位置。</td></tr><tr><td><code>public/models/</code></td><td>模型文件、来源清单、哈希和许可证。</td><td>rgb-source.json 与 mediapipe-source.json。</td></tr><tr><td><code>public/audio/</code></td><td>预生成中文语音和提示清单。</td><td>prompts.json 与相应 WAV。</td></tr><tr><td><code>scripts/</code></td><td>准备资源、构建 Worker、局域网服务和模型导出。</td><td>prepare-assets.mjs、build-worker.mjs、lan.mjs、export-models.py。</td></tr><tr><td><code>tests/</code></td><td>核心规则与音频相关检查。</td><td>先看动作正例、缺少恢复过程和证据不足的负例。</td></tr><tr><td><code>public/technical-guide.html / .css</code></td><td>当前说明文档与样式。</td><td>静态文档不启动相机和检测模型。</td></tr></tbody></table></div>
+<p><code>public/vision-worker.js</code> 是由源码构建出的线程文件，修改算法应改 <code>src/</code> 中对应文件，再构建，不要只改生成文件。<code>dist/</code> 同样是构建产物。</p>
+<p>录像逻辑位于 <code>src/video-recorder.js</code>，负责探测格式、分段收集、等待末尾数据和内存限制；<code>src/main.js</code> 将它与相机生命周期、回放和下载相连。<code>tests/recording.html</code> 只录制生成的动态图案，用于检查真实编码和解码链路，不请求相机、不运行活体检测，也不发布到 dist。</p>
+</section>
+<section id="troubleshooting"><h2><span class="number">16</span>常见问题怎么处理</h2>
+<dl class="faq">
+<dt>相机打不开，先看哪里？</dt><dd>检查 HTTPS 或电脑 localhost、相机授权、测试证书信任和摄像头占用。手机不能用电脑的 127.0.0.1；没有摄像头的电脑也无法完成实拍。</dd>
+<dt>一直“正在加载模型”，可以先跳过吗？</dt><dd>不能。三个模型和运行库是流程必需项。检查网络面板中的 models、vendor、vision-worker.js 是否成功返回，以及是否拿到 HTML 错误页。重新安装依赖后运行 assets，再构建。</dd>
+<dt>人已经在框里，为什么提示靠近或完整入镜？</dt><dd>参考框只是辅助构图，规则使用实际人脸关键点范围和原始像素。面部太小、边缘被裁切、眼镜或遮挡影响关键点时，都可能触发提示。缓慢调整距离，避免贴近边缘。</dd>
+<dt>真人为什么 RGB 也低？</dt><dd>暗光、背光、过曝、画质压缩、相机差异和检测框变化都可能影响模型。先均匀补光、正视镜头、擦净镜头；记录两个模型分数与原始尺寸。不能把一次低分当作造假结论，也不应直接放宽所有阈值。</dd>
+<dt>左转、右转为什么总是做反？</dt><dd>按你自己的左右做，预览是镜像。幅度适中、短暂停留再回正，过大侧脸可能先触发质量或丢脸限制。</dd>
+<dt>眨眼很快、嘴已经张开，为什么不通过？</dt><dd>必须先从自然状态开始，再形成连续动作证据，最后恢复。不要在动作提示前一直闭眼或张嘴；眨眼稍慢些，张嘴稍停再闭嘴，并保持正面。</dd>
+<dt>动作做完了，为什么还不出照片？</dt><dd>动作完成只是中间步骤。还需正脸、睁眼、闭嘴、清晰曝光合格，以及后置 RGB 多帧达标。此时保持正面，不要继续做动作或晃手机。</dd>
+<dt>为什么一切到聊天或技术说明，检测就停止？</dt><dd>当前要求连续现场画面，切到后台会停止本轮并释放相机，防止把不连续的片段拼成一次检测。返回后重新开始即可。</dd>
+<dt>语音没有声音怎么办？</dt><dd>开启媒体音量，确认页面“语音开启”，点击重播。若显示“点按启用语音”，按提示点击重试。浏览器播放策略不同，文字提示仍有效。</dd>
+<dt>手机卡、热、提示视频中断怎么办？</dt><dd>查看运行模式和单帧耗时，关闭其他高负载应用，改善光线。主线程兼容模式可能更容易阻塞；不能仅靠增大超时就解决设备性能和连续性问题，需在目标设备上评估。</dd>
+<dt>电脑修改后手机为什么没变化？</dt><dd>手机 HTTPS 服务读取 dist，需重新 build 后刷新。若仍旧，检查访问的 IP、端口和部署目录是否正确，再检查浏览器缓存。</dd>
+<dt>照片是不是标准证件照，能直接与身份证匹配吗？</dt><dd>它是原始方向的正脸候选，没有证件照背景规范和识别模型专用对齐。后续比对需独立实现；先保留原始帧和五点坐标，按所选模型处理。</dd>
+<dt>“检查本地推理链路”正常，为什么真实检测仍会失败？</dt><dd>该按钮仅用灰色测试图调用人脸和两个 RGB 模型，不请求相机，也不产生活体通过。它证明模型可运行，不能证明动作体验、防伪能力或真人通过率。</dd>
+<dt>为什么没有录像，或者只能下载 WebM？</dt><dd>相机可用不代表浏览器一定支持录像编码。查看“检测录像”的状态；不支持或编码失败会显示原因。文件格式由实际编码能力决定，不能简单改名为 MP4。微信内下载可能受限，可用系统浏览器测试；相机、录像、音频和模型都需要分别验收。</dd>
+<dt>为什么录像没有声音？</dt><dd>当前仅录制视频轨道，不申请麦克风，也不把页面播报混进录像。需要有声录像时必须另行增加麦克风授权和音轨处理，当前版本没有该能力。</dd>
+</dl>
+</section>
+<section id="validation"><h2><span class="number">17</span>怎样验收、目前能防到哪里</h2>
+<p>软件规则可通过自动化检查验证，实际防伪能力必须用真机、真人和攻击样本分别评估。构建成功、合成测试通过或模型能输出数字，都不能代替这类验收。</p>
+<pre><code>cd D:\H5\liveness-lab
+npm test
+npm run build</code></pre>
+<p>当前检查覆盖动作状态与负例、质量门槛、RGB 通道排列、softmax 类别、裁剪边界及音频相关逻辑。开发服务下的 <code>/tests/browser.html</code> 可用自行准备的授权图片检查真实关键点链路；它不会构建进正式 dist，也不能完成真实活体验收。</p>
+<h3>初学者可以这样做一次有记录的测试</h3><ol><li>记录手机型号、系统、浏览器、实际图像尺寸、运行模式和光照条件。</li><li>用多名授权参与者在正常光线下测试，记录动作顺序、完成耗时、失败阶段和重试次数，尽量覆盖五种动作与不同组合。</li><li>逐项测试暗光、逆光、眼镜、远近变化、较快动作，观察提示是否合理，避免一次改变很多条件。</li><li>测试无脸、多人、动作不回正、视频中断、切后台和停止，确认不输出通过。</li><li>用授权照片、打印照片、另一屏幕的静态照片和视频等样本测试，单独统计攻击是否被接受；记录攻击介质和设备。</li><li>检查照片是否同一原始帧、原始方向、清楚睁眼闭嘴，以及 JSON 的裁剪和关键点能否对上原图。</li><li>检测结束后确认相机指示灯停止；检查首页、文档、手机布局、语音和下载。</li></ol>
+<h3>两类错误要分开统计</h3><p><strong>正常人误拒：</strong>正常检测尝试被拒绝的次数 ÷ 正常尝试总数。<strong>攻击被接受：</strong>攻击尝试被接受的次数 ÷ 对应攻击尝试总数。保留样本规模、设备、条件和重复尝试信息；这只是便于理解的统计方式，不能直接宣称完成标准认证或获得行业准确率。</p>
+<div class="boundary"><strong>当前能力边界</strong><p>目标是辅助拦截普通照片和屏幕翻拍。可选的会话内人脸一致性校验只覆盖实际抽检画面，不能保证抵御高清视频回放、面具、实时换脸、相机注入或前端代码篡改。纯前端结果可被修改，无法独自建立强认证信任链。</p></div>
+<p>后续要用于更严格场景，需要补充可信端验证、身份一致性、独立攻击评估和目标设备校准。它们属于新增能力，当前文档或阈值调整不会自动实现这些能力。</p>
+</section>
+<section id="identity"><h2><span class="number">18</span>可选：会话内人脸一致性校验</h2>
+<p>开始按钮上方有“会话内人脸一致性校验”，默认不勾选。不勾选时沿用原有随机动作、RGB、选帧和录像流程，不加载或运行身份特征模型。勾选后，本轮额外检查准备、动作和最终照片是否与开始时的同一个参考人脸相符；检测中锁定选项，重新开始才能切换。</p>
+<h3>它比较什么？</h3><p>比如 A 建立参考后，B 替 A 做动作或出现在最终照片里，程序通过人脸特征差异尝试发现这种变化。不需要先知道姓名，也不查询身份数据库。它与“是否匹配身份证照片”不同，后者尚未实现。</p>
+<h3>实际使用的模型与输入</h3><p>使用 InsightFace buffalo_s 中的 MobileFaceNet <code>w600k_mbf.onnx</code>，13,616,099 字节，约 13 MB，复用现有 ONNX Runtime Web 单线程 CPU WASM。模型仅在勾选并开始检测时加载。开启后模型准备失败会明确报错并停止，不会自动改为未校验通过。</p>
+<p>每张合格画面利用 MediaPipe 的左右眼角均值、鼻尖和嘴角组成五点，通过相似变换映射到 ArcFace 112 × 112 模板；输入是 <code>RGB float32 NCHW</code>，按 <code>(像素 − 127.5) / 127.5</code> 处理。输出 512 维特征，先 L2 归一化，再比较余弦相似度。它与防伪模型的 BGR、0～255 输入不同，不能混用。</p>
+<h3>本轮参考怎样建立？</h3><p>准备阶段只接受自然正脸、质量合格且同一帧 RGB 达标的参考样本，至少 3 份、跨度至少 800 毫秒，相邻样本至少间隔 300 毫秒。样本间余弦相似度需达到 0.55，归一化均值作为固定参考。本轮不滚动更新参考，避免模板逐步漂移。</p>
+<h3>过程怎样检查？</h3><ol><li>持续检查现有人脸数量、位置、姿态和质量。明显位置 / 尺寸跳变会要求新的身份复核。</li><li>通常每 500 毫秒抽取可用特征；动作开始、动作恢复正面时各要求一次同帧新鲜比对，两个动作共四个检查点。</li><li>动作后的选帧阶段，候选照片必须同时具有该帧合格 RGB 和身份比对，不能拿旧分数套到新照片。</li><li>第一份不匹配先暂停流程并补采复核；连续两份合格特征不匹配则失败。模糊、遮挡、姿态过大属于暂时无法确认，暂停推进，不直接声称换人。</li><li>建立参考后超过 2 秒未获得成功确认则失败；原有多人、丢脸、视频中断与超时限制仍然适用。实际频率取决于设备性能。</li></ol>
+<p>用于身份特征的姿态范围暂为 |yaw| &lt; 42°、|pitch| &lt; 35°、|roll| &lt; 18°。角度过大时先回正；这些规则是工程初值，需要真实手机、不同人和动作样本校准。</p>
+<h3>分数、结果和隐私</h3><p>余弦阈值默认 0.45，可在勾选后展开“测试参数与运行信息”调整；0.45 与参考门槛 0.55 均未经业务标定，不能当成本人概率，也不能复用 RGB 0.80 的解释。页面显示校验状态、最新分数和过程比对次数。</p>
+<p>通过后的 JSON 新增 <code>identity</code>，包括是否启用、模型、阈值、参考采样时间、比对时间与分数、四个检查点、最终照片匹配和最长未确认间隔。未开启记录 <code>enabled: false</code> 与 <code>not_evaluated</code>。报告不包含特征向量；本轮结束清除参考向量，不上传、不写入本地数据库。</p>
+<h3>源码与验收</h3><p><code>src/identity-guard.js</code> 管理固定参考和判定，<code>src/identity-math.js</code> 管理五点对齐、输入与余弦计算，视觉 Worker 负责实际模型推理。<code>tests/identity.test.mjs</code> 覆盖原流程关闭、缺少特征、换人、未知状态、旧分数、检查点、照片绑定及清理；开发页 <code>/tests/identity.html</code> 使用本地授权测试图跑真实 Worker / 主线程（图片不随源码提供），不进入 dist。</p>
+<div class="boundary"><strong>边界和模型许可</strong><p>这是持续跟踪加抽样身份比较，采样间仍有观察空隙，不能保证每一瞬间都是同一人，也不证明视频来自真实摄像头。录制视频、同一人回放、实时换脸、相机注入和前端修改仍需独立防护。当前没有证件照片比对。MediaPipe 五点与上游 SCRFD 定义存在差异，必须真机校准。预训练权重仅限非商业研究，商用需另行授权；来源、SHA-256 和输入约定见 <code>models/identity-source.json</code>。</p></div>
+</section>
+<section id="references"><h2><span class="number">19</span>模型来源与继续学习</h2>
+<p>当前固定依赖为 <code>@mediapipe/tasks-vision 0.10.32</code> 与 <code>onnxruntime-web 1.22.0</code>。Face Landmarker 使用 Google 官方版本 1 模型；来源和 SHA-256 记录在 <code>models/mediapipe-source.json</code>。</p>
+<p>RGB 模型来自 <code>minivision-ai/Silent-Face-Anti-Spoofing</code>，固定提交为 <code>b6d5f04ad78778917853b25c778acef6d5626d15</code>。<code>models/rgb-source.json</code> 记录原始权重与 ONNX 的 SHA-256、输入约定和导出误差；许可证见 <code>models/MiniFASNet-LICENSE.txt</code>（Apache-2.0）。</p>
+<p>SHA-256 像文件的内容指纹，用于对照是否为相同文件，不证明模型准确或没有风险。当前导出在三个输入样本上比较 PyTorch 与 ONNX，最大绝对误差小于 0.000004；这验证转换数值一致性，不是防伪通过率。</p>
+<p>录像接口参考 <a href="https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder/stop" target="_blank" rel="noopener noreferrer">MDN：MediaRecorder.stop()</a> 的末尾数据事件顺序，以及 <a href="https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder/isTypeSupported_static" target="_blank" rel="noopener noreferrer">MDN：isTypeSupported()</a> 的格式探测说明。格式探测通过后，实际编码仍可能因资源不足失败。</p>
+<ul class="source-list"><li><a href="https://developer.mozilla.org/zh-CN/docs/Web/API/MediaDevices/getUserMedia" target="_blank" rel="noopener noreferrer">MDN：getUserMedia</a>——了解相机权限与约束。</li><li><a href="https://developer.mozilla.org/zh-CN/docs/Web/API/Web_Workers_API" target="_blank" rel="noopener noreferrer">MDN：Web Workers</a>——了解浏览器工作线程。</li><li><a href="https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker/web_js" target="_blank" rel="noopener noreferrer">MediaPipe：Face Landmarker Web 指南</a>——了解关键点、表情和姿态输出。</li><li><a href="https://onnxruntime.ai/docs/tutorials/web/" target="_blank" rel="noopener noreferrer">ONNX Runtime Web</a>——了解浏览器模型推理。</li><li><a href="https://github.com/minivision-ai/Silent-Face-Anti-Spoofing/tree/b6d5f04ad78778917853b25c778acef6d5626d15" target="_blank" rel="noopener noreferrer">Silent-Face-Anti-Spoofing：固定版本源码</a>——对照模型、裁剪与前处理约定。</li></ul>
+<div class="note"><strong>读完后，你应该能够解释</strong><p>程序先检查正脸与防伪，再按顺序观察动作，最后重新检查并挑选清晰照片。RGB 分数不是身份概率，模型在本机运行仍需加载资源；动作通过、照片清晰和身份真实是不同的问题。</p></div>
+</section>
+</main></div>
+<footer class="doc-footer"><a href="#top">返回文档顶部 ↑</a><span>© 2026 北智技术实验室 · H5活体检测 · v0.1.0</span></footer>
+</body></html>

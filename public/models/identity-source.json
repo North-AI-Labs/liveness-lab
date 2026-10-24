@@ -1,0 +1,12 @@
+{
+  "file": "w600k_mbf.onnx",
+  "architecture": "MobileFaceNet",
+  "package": "InsightFace buffalo_s",
+  "url": "https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_s.zip",
+  "bytes": 13616099,
+  "sha256": "9cc6e4a75f0e2bf0b1aed94578f144d15175f357bdc05e815e5c4a02b319eb4f",
+  "input": "RGB float32 NCHW 1x3x112x112; (pixel-127.5)/127.5; five-point alignment",
+  "output": "512-dimensional embedding, L2 normalized, cosine similarity",
+  "alignmentNote": "MediaPipe eye-corner averages, nose tip and mouth corners; differs from SCRFD landmarks and requires target-device calibration.",
+  "license": "Pretrained weights are for non-commercial research only; commercial authorization required. https://github.com/deepinsight/insightface/tree/master/python-package#license"
+}
